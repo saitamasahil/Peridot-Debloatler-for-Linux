@@ -53,6 +53,7 @@ PACKAGES=(
   com.facebook.appmanager
   com.facebook.services
   com.miui.player
+  com.android.mms
 )
 
 # Restore (install-existing) for user 0
