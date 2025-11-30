@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BANNER="Redmi Turbo 3 / POCO F6 (Peridot) Debloat Script (Linux)\nBy PocoAccord (ported to shell)\n------------------------------------------------------------------------------"
+BANNER="Redmi Turbo 3 / POCO F6 (Peridot) Safe Debloat Script (Linux)\nBy Sahil (Improved)\n------------------------------------------------------------------------------"
 
 echo -e "$BANNER"
 
@@ -15,7 +15,6 @@ fi
 adb start-server >/dev/null 2>&1 || true
 
 echo "Waiting for authorized device... (connect and authorize via USB)"
-# Wait up to 60 seconds for an authorized device using adb get-state
 authorized=0
 for _ in {1..60}; do
   if adb get-state 2>/dev/null | grep -qx "device"; then
@@ -25,48 +24,45 @@ for _ in {1..60}; do
   sleep 1
 done
 
-# Verify authorized device is present
 if [ "$authorized" -ne 1 ]; then
-  echo "Error: No authorized device detected. Check USB cable, enable USB debugging AND USB debugging (Security settings) in Developer options, and authorize the PC (accept RSA prompt)." >&2
+  echo "Error: No authorized device detected. Check USB cable and enable USB debugging." >&2
   adb devices
   exit 1
 fi
 
-# Package list to uninstall for current user
+# Safe packages to uninstall (user 0 only)
 PACKAGES=(
   com.xiaomi.mipicks
   com.mi.globalminusscreen
   com.miui.cleaner
+  com.google.facebook.system
   com.xiaomi.glgm
   com.xiaomi.discover
   com.miui.yellowpage
   com.preff.kb.xm
   com.mi.android.globalFileexplorer
-  com.google.android.apps.subscriptions.red
   com.google.android.videos
-  com.google.android.mms
   com.google.android.apps.docs
-  com.google.facebook.system
-  com.google.android.apps.tachyon
-  com.android.providers.downloads.ui
-  com.miui.miservice
   com.facebook.appmanager
   com.facebook.services
   com.miui.player
-  com.android.mms
 )
 
-# Perform debloat
 fail_count=0
 for pkg in "${PACKAGES[@]}"; do
-  echo "Uninstalling for user 0: $pkg"
-  if ! adb shell pm uninstall -k --user 0 "$pkg" >/dev/null 2>&1; then
-    echo "  Skipped or not present: $pkg"
+  # Check if package exists
+  if adb shell pm list packages | grep -q "$pkg"; then
+    echo "Uninstalling for user 0: $pkg"
+    if ! adb shell pm uninstall -k --user 0 "$pkg" >/dev/null 2>&1; then
+      echo "  Failed to uninstall: $pkg"
+      fail_count=$((fail_count+1))
+    fi
+  else
+    echo "  Package not found / already removed: $pkg"
     fail_count=$((fail_count+1))
   fi
- done
+done
 
-# Summary
 ok_count=$(( ${#PACKAGES[@]} - fail_count ))
 echo "------------------------------------------------------------------------------"
 echo "Completed. Success: $ok_count  Skipped/Not found: $fail_count"
